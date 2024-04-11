@@ -74,8 +74,8 @@ function checkVector(line) {
 }
 
 // isWin checks board statuses with targetCounts ({ rowChecks, columnChecks })
-function isWin(matrix, targetCounts) {
-    const currentChecks = checkRowAndColumns(matrix);
+function isWin(currentChecks, targetCounts) {
+    // const currentChecks = checkRowAndColumns(matrix);
     return isEqualChecks(currentChecks.rowChecks, targetCounts.rowChecks) &&
         isEqualChecks(currentChecks.columnChecks, targetCounts.columnChecks);
 }

@@ -1,17 +1,32 @@
 <template>
   <div class="component-nonogram-game">
     <h1>Nonogram</h1>
-    <div class="board">
-      <div v-for="(row, rowIndex) in board" :key="`row-${rowIndex}`" class="row">
-        <div v-for="(cell, cellIndex) in row" :key="`cell-${cellIndex}`" class="cell" @click="makeMove(rowIndex, cellIndex)">
-          {{ cell === 1 ? "O" : (cell === -1 ? "X" : ".")  }}
+    <div class="canvas">
+      <div class="canvas-row">
+        <div class="placeholder-block"></div>
+        <div class="column-checks-block">
+          <div v-for="(check, colIndex) in boardCounts.columnChecks" :key="`col-${colIndex}`" class="column-check">
+            {{ showColumnCheck(check) }}
+          </div>
+        </div>
+      </div>
+      <div class="canvas-row">
+        <div class="row-checks-block">
+          <div v-for="(check, rowIndex) in boardCounts.rowChecks" :key="`row-${rowIndex}`" class="row-check">
+            {{ showRowCheck(check) }}
+          </div>
+        </div>
+        <div class="board">
+          <div v-for="(row, rowIndex) in board" :key="`row-${rowIndex}`" class="row">
+            <div v-for="(cell, cellIndex) in row" :key="`cell-${cellIndex}`" class="cell" @click="makeMove(rowIndex, cellIndex)">
+              {{ cell === 1 ? "O" : (cell === -1 ? "X" : ".")  }}
+            </div>
+          </div>
         </div>
       </div>
     </div>
-    <button v-if="winner || isDraw" @click="resetGame">Restart Game</button>
+    <button @click="resetGame">Restart Game</button>
     <p v-if="isWin">WINS!</p>
-    <p v-if="winner">{{ winner }} wins!</p>
-    <p v-if="isDraw">It's a draw!</p>
   </div>
 </template>
 
@@ -43,6 +58,7 @@ export default {
 
     // props
     const board = ref(nonogram.getBoard(num));
+    const boardCounts = ref(targetCounts);
    
     const currentPlayer = ref('X');
     const winner = ref(null);
@@ -50,8 +66,12 @@ export default {
       return board.value.every(row => row.every(cell => cell)) && !winner.value;
     });
 
+    const currentRowColumnChecks = computed(() => {
+      return nonogram.checkRowAndColumns(board.value);
+    });
+
     const isWin = computed(() => {
-      return nonogram.isWin(board.value, targetCounts);
+      return nonogram.isWin(currentRowColumnChecks.value, targetCounts);
     });
 
     function makeMove(rowIndex, cellIndex) {
@@ -65,11 +85,19 @@ export default {
 
       
       //// check row/column statuses
-      const { rowChecks, columnChecks } = nonogram.checkRowAndColumns(board.value);
+      const { rowChecks, columnChecks } = currentRowColumnChecks.value;
       debugCheckCounts(rowChecks, columnChecks);
 
       // checkWinner();
       // currentPlayer.value = currentPlayer.value === 'X' ? 'O' : 'X';
+    }
+
+    function showRowCheck(checks) {
+      return checks.join(',');
+    }
+
+    function showColumnCheck(checks) {
+      return checks.join('\n');
     }
 
     // util, private
@@ -118,7 +146,7 @@ export default {
       winner.value = null;
     }
 
-    return { board, makeMove, resetGame, isWin, winner, isDraw };
+    return { board, boardCounts, makeMove, resetGame, isWin, showRowCheck, showColumnCheck, winner, isDraw };
   }
 };
 </script>
@@ -126,6 +154,39 @@ export default {
 <style scoped>
 .component-nonogram-game {
   display: block;
+
+  .canvas {
+    display: flex;
+    flex-direction: column;
+
+    .canvas-row {
+      display: flex;
+      flex-direction: row;
+    }
+    .placeholder-block {
+      width: 200px;
+    }
+    .row-checks-block {
+      display: flex;
+      flex-direction: column;
+      width: 200px;
+      text-align: right;
+    }
+    .row-check {
+      height: 100px;
+      line-height: 100px;
+      vertical-align: middle;
+    }
+    .column-checks-block {
+      display: flex;
+      flex-direction: row;
+    }
+    .column-check {
+      width: 100px;
+      text-align: center;
+      white-space: pre;
+    }
+  }
 
   .board {
     /* display: grid; */
