@@ -6,13 +6,15 @@
         <div class="placeholder-block"></div>
         <div class="column-checks-block">
           <div v-for="(check, colIndex) in boardCounts.columnChecks" :key="`col-${colIndex}`" class="column-check">
-            {{ showColumnCheck(check) }}
+            <span>ST: {{ statuses && statuses.columnStatuses && statuses.columnStatuses[colIndex].status }}|</span>
+            <br/>{{ showColumnCheck(check) }}
           </div>
         </div>
       </div>
       <div class="canvas-row">
         <div class="row-checks-block">
           <div v-for="(check, rowIndex) in boardCounts.rowChecks" :key="`row-${rowIndex}`" class="row-check">
+            <span>ST: {{ statuses && statuses.rowStatuses && statuses.rowStatuses[rowIndex].status }}|</span>
             {{ showRowCheck(check) }}
           </div>
         </div>
@@ -59,6 +61,7 @@ export default {
     // props
     const board = ref(nonogram.getBoard(num));
     const boardCounts = ref(targetCounts);
+    const statuses = ref(null); // is not computed, we manually compute update this
    
     const currentPlayer = ref('X');
     const winner = ref(null);
@@ -71,6 +74,7 @@ export default {
     });
 
     const isWin = computed(() => {
+      // NOW: matrix line checks are duplicated with line solution checks, can do once only
       return nonogram.isWin(currentRowColumnChecks.value, targetCounts);
     });
 
@@ -85,11 +89,48 @@ export default {
 
       
       //// check row/column statuses
-      const { rowChecks, columnChecks } = currentRowColumnChecks.value;
-      debugCheckCounts(rowChecks, columnChecks);
+      // const { rowChecks, columnChecks } = currentRowColumnChecks.value;
+      // nonogram.debugCheckCounts(rowChecks, columnChecks);
+      // TODO: we only need to update 2 lines: current line/column
+      const { rowStatuses, columnStatuses } = nonogram.solveRowColumnStatuses(board.value, targetCounts);
+      statuses.value = { rowStatuses, columnStatuses };
 
-      // checkWinner();
-      // currentPlayer.value = currentPlayer.value === 'X' ? 'O' : 'X';
+      // TODO: auto solve mode: should have buttons to do this?
+      // check against solutions -> if any new changed, fill them automatically
+
+      // TODO: automatically set UNIQUE SOLUTION LINES: but only at the begginning? or else no meaning (should have redos?)
+      // TODO: smarter sataus: UNIQUE solution at the current state -> auto fill? (but should have redos?)
+
+      // automatically updates OK lines (fill them) (SHOULD have redos?)
+      // SIDE EFFECT AND BUG:
+      // TODO: this prevents a OK line to be edited again except for the 1 cells (X -> 0 is automatically filled again)
+      //       AND would be BUG if statuses not refreshed after this (IF ANY CHANGED) -> can we do better performance than this?
+      var isAutoChanged = false;
+      for (let i = 0; i < num; i++) {
+        if (rowStatuses[i].status === "OK") {
+          // fill 0 -> -1 cells
+          for (let j = 0; j < num; j++) {
+            if (board.value[i][j] === 0) {
+              board.value[i][j] = -1;
+              isAutoChanged = true;
+            }
+          }
+        }
+      }
+      for (let j = 0; j < num; j++) {
+        if (columnStatuses[j].status === "OK") {
+          // fill 0 -> -1 cells
+          for (let i = 0; i < num; i++) {
+            if (board.value[i][j] === 0) {
+              board.value[i][j] = -1;
+              isAutoChanged = true;
+            }
+          }
+        }
+      }
+      if (isAutoChanged) {
+        statuses.value = nonogram.solveRowColumnStatuses(board.value, targetCounts);
+      }
     }
 
     function showRowCheck(checks) {
@@ -101,18 +142,6 @@ export default {
     }
 
     // util, private
-    function debugCheckCounts(rowChecks, columnChecks) {
-      console.log('\n');
-      console.log('---------------');
-      console.log('ROW counts:');
-      for (let i = 0; i < rowChecks.length; i++) {
-        console.log(i, rowChecks[i]);
-      }
-      console.log('COL counts:');
-      for (let i = 0; i < columnChecks.length; i++) {
-        console.log(i, columnChecks[i]);
-      }
-    }
 
     /*
     function checkWinner() {
@@ -142,11 +171,10 @@ export default {
 
     function resetGame() {
       board.value = nonogram.getBoard(num);
-      currentPlayer.value = 'X';
-      winner.value = null;
+      statuses.value = nonogram.solveRowColumnStatuses(board.value, targetCounts);
     }
 
-    return { board, boardCounts, makeMove, resetGame, isWin, showRowCheck, showColumnCheck, winner, isDraw };
+    return { board, boardCounts, statuses, makeMove, resetGame, isWin, showRowCheck, showColumnCheck, winner, isDraw };
   }
 };
 </script>
