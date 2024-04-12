@@ -180,29 +180,32 @@ function solveLineStatus(line, checks) {
             const combination = generateCombinationInit(l, t);
             let candidate = generateCombination(n, checks, l, r, combination);
             console.log('CANDINIT', combination, candidate);
-            if (matchCombination(line, candidate, n)) {
-                console.log('match', line, candidate);
+            if (matchCombination(line, candidate, n, solutions)) {
+                // console.log('match', line, candidate);
                 matchAny = true;
                 if (l == 0) {
                     status = "POSSIBLE"; // as only one solution exists
                 }
+            // } else { // break: DO NOT BREAK EARLY FOR AUTO SOLVE
             } else {
                 if (l == 0) {
                     status = "NG"; // as only one solution exists
-                } else {
-                    while (generateCombinationNext(combination, l, t)) {
-                        candidate = generateCombination(n, checks, l, r, combination);
-                        console.log('CAND', combination, candidate);
-                        if (matchCombination(line, candidate, n)) {
-                            matchAny = true;
-                            break;
-                        }
-                    }
-                    if (!matchAny) {
-                        status = "NG";
-                    }
                 }
             }
+            if (status != "NG") {
+                while (generateCombinationNext(combination, l, t)) {
+                    candidate = generateCombination(n, checks, l, r, combination);
+                    console.log('CAND', combination, candidate);
+                    if (matchCombination(line, candidate, n, solutions)) {
+                        matchAny = true;
+                        // break; // CHECK: MUST NOT BREAK?
+                    }
+                }
+                if (!matchAny) {
+                    status = "NG";
+                }
+            }
+            // }
         }
     }
     // debug
@@ -212,6 +215,39 @@ function solveLineStatus(line, checks) {
 
 // check if one line matches the candidate line (only -1/1 cells matter), (candidate line do not have -1 cells)
 // TODO: smarter checks for special cases
+// generate induction-based solutions on the way: some cells may be determined
+// PARA: solutions: WILL BE CHANGED DIRECTLY
+// solutions: [] 0: wait to start, 1/-1: user specified, 100/-100: accumulated all possible solutions are all 1/0, -200: possible solutions do not agree (1/0)
+function matchCombination(line, candidate, n, solutions) {
+    let result = true;
+    for (let i = 0; i < n; i++) {
+        if (line[i] == -1 && candidate[i] == 1) return false; // wrong -1 cell
+        if (line[i] == 1 && candidate[i] == 0) return false; // not to match
+    }
+    // if it is a possible solution, check every position
+    for (let i = 0; i < n; i++) {
+        // auto solution
+        if (solutions[i] == 1 || solutions[i] == -1 || solutions[i] == -200) continue;
+        if (candidate[i] == 1) {
+            if (solutions[i] == -100) {
+                solutions[i] = -200;
+                continue;
+            }
+            // 100,0 -> 100
+            solutions[i] = 100;
+        } else {
+            // candidate[i] == 0
+            if (solutions[i] == 100) {
+                solutions[i] = -200;
+                continue;
+            }
+            // -100,0 -> -100
+            solutions[i] = -100;
+        }
+    }
+    return result; // possible match
+}
+/* no solution generating, can return early
 function matchCombination(line, candidate, n) {
     for (let i = 0; i < n; i++) {
         if (line[i] == -1 && candidate[i] == 1) return false; // wrong -1 cell
@@ -219,6 +255,8 @@ function matchCombination(line, candidate, n) {
     }
     return true; // possible match
 }
+*/
+
 //// combinations: total number of l balls, in t positions
 //// generates all possible configurations from smallest to largest in [0, ..., l] to [l, ..., 0]
 function generateCombination(n, checks, l, r, combination) {

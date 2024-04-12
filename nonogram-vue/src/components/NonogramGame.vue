@@ -63,7 +63,6 @@ export default {
     const boardCounts = ref(targetCounts);
     const statuses = ref(null); // is not computed, we manually compute update this
    
-    const currentPlayer = ref('X');
     const winner = ref(null);
     const isDraw = computed(() => {
       return board.value.every(row => row.every(cell => cell)) && !winner.value;
@@ -95,8 +94,50 @@ export default {
       const { rowStatuses, columnStatuses } = nonogram.solveRowColumnStatuses(board.value, targetCounts);
       statuses.value = { rowStatuses, columnStatuses };
 
+      //// auto fill operations
+
+      var isAutoChanged = false;
+
       // TODO: auto solve mode: should have buttons to do this?
       // check against solutions -> if any new changed, fill them automatically
+      const autoSolveMode = true;
+      if (autoSolveMode) {
+        // collect new auto solved cells' indexes and values
+        const solvedCells = []; // in { row, column, value } of only 100/-100 values
+        for (let i = 0; i < num; i++) {
+          const status = rowStatuses[i];
+          for (let j = 0; j < num; j++) {
+            const solved = status.solutions[j];
+            if (solved == 100 || solved == -100) {
+              solvedCells.push({ row: i, column: j, value: solved });
+            }
+          }
+        }
+        for (let j = 0; j < num; j++) {
+          const status = columnStatuses[j];
+          for (let i = 0; i < num; i++) {
+            const solved = status.solutions[i];
+            if (solved == 100 || solved == -100) {
+              solvedCells.push({ row: i, column: j, value: solved });
+            }
+          }
+        }
+        console.log("SOLEDCELLS", solvedCells);
+        // set them
+        if (solvedCells.length > 0) {
+          isAutoChanged = true;
+          for (const { row, column, value } of solvedCells) {
+            const current = board.value[row][column];
+            const toValue = (value == 100) ? 1 : -1;
+            if ((current == 1 || current == -1) && current != toValue) {
+              console.log("CONFLICT?", current, row, column, value);
+              break;
+            }
+            console.log("AUTO FILL SOLUTION: ", row, column, value);
+            board.value[row][column] = toValue;
+          }
+        }
+      }
 
       // TODO: automatically set UNIQUE SOLUTION LINES: but only at the begginning? or else no meaning (should have redos?)
       // TODO: smarter sataus: UNIQUE solution at the current state -> auto fill? (but should have redos?)
@@ -105,7 +146,6 @@ export default {
       // SIDE EFFECT AND BUG:
       // TODO: this prevents a OK line to be edited again except for the 1 cells (X -> 0 is automatically filled again)
       //       AND would be BUG if statuses not refreshed after this (IF ANY CHANGED) -> can we do better performance than this?
-      var isAutoChanged = false;
       for (let i = 0; i < num; i++) {
         if (rowStatuses[i].status === "OK") {
           // fill 0 -> -1 cells
