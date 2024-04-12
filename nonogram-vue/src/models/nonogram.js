@@ -161,8 +161,15 @@ function solveLineStatus(line, checks) {
         if (sum === 0) {
             // all x solution, sum|r == 0
             for (let i = 0; i < n; i++) solutions[i] = -1;
-            // check solution here
             console.log('ALL0');
+            // check solution here
+            status = "OK";
+            for (let i = 0; i < n; i++) {
+                if (solutions[i] == 1) {
+                    status = "NG";
+                    break;
+                }
+            }
         } else if (l < 0) {
             // bad solution, something went wrong, target check is wrong
             status = "NG";
